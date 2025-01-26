@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Freshness Recognition</title>
+    <style>
+        /* General reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            text-align: center;
+            background-image: url('images/CB253699-89B9-4DE6-9585-9B8F605054BD.webp');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .container {
+            max-width: 500px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 1.2s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #ff6f61;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite alternate;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        label {
+            display: inline-block;
+            padding: 12px 25px;
+            background-color: #ff6f61;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: pulse 1.5s infinite;
+        }
+
+        label:hover {
+            background-color: #ff9a8b;
+            transform: scale(1.05);
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 12px 25px;
+            background-color: #24c6dc;
+            color: white;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #514a9d;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .result {
+            margin-top: 20px;
+            font-size: 1.5rem;
+            color: #333;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .image-preview {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+            border-radius: 15px;
+            border: 3px solid #ff6f61;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            animation: scaleIn 1s ease-out;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes bounce {
+            from {
+                transform: translateY(0);
+            }
+            to {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍎 Freshness Recognition 🍌</h1>
+        <form id="uploadForm">
+            <label for="fileInput">Choose Image</label>
+            <input type="file" id="fileInput" name="file" accept="image/*" required>
+            <button type="submit">Upload & Predict</button>
+        </form>
+        <div class="result" id="result"></div>
+        <div class="additional-info" id="additionalInfo"></div>
+        <img id="imagePreview" class="image-preview" style="display: none;" />
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const resultDiv = document.getElementById('result');
+        const additionalInfoDiv = document.getElementById('additionalInfo');
+        const imagePreview = document.getElementById('imagePreview');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files.length) {
+                resultDiv.textContent = 'Please select a file.';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            // Display the uploaded image immediately
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                imagePreview.src = event.target.result;
+                imagePreview.style.display = 'block';
+                imagePreview.classList.add('scaleIn'); // Add animation class
+            };
+            reader.readAsDataURL(file);
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.error) {
+                    resultDiv.textContent = `Error: ${result.error}`;
+                } else {
+                    resultDiv.textContent = `Predicted Class: ${result.predicted_class}`;
+                    additionalInfoDiv.textContent = generateDescription(result.predicted_class);
+                }
+            } catch (error) {
+                resultDiv.textContent = 'An error occurred. Please try again.';
+            }
+        });
+
+        function generateDescription(predictedClass) {
+            const descriptions = {
+                "freshapple": "It's a fresh apple.",
+                "rottenapple": "This is a rotten apple.",
+                "freshbanana": "It's a fresh banana.",
+                "rottenbanana": "This is a rotten banana.",
+                "freshorange": "It's a fresh orange.",
+                "rottenorange": "This is a rotten orange."
+            };
+            return descriptions[predictedClass] || '';
+        }
+    </script>
+</body>
+</html>
